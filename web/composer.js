@@ -373,13 +373,13 @@ function WatchBar() {
     </div>`;
 }
 
-export function Composer() {
+export function Composer({ restricted = false } = {}) {
     const { view, conversationId } = store.state;
     const historyScope = { person: store.state.me?.id, conversation: conversationId };
     const [text, setText] = useState(() => drafts.get(conversationId));
     const [files, setFiles] = useState([]);
     // How a message goes while Pi works: "steer", "followUp" (Queue), or "interrupt" (stop the run, then send).
-    const [sendMode, setSendMode] = useState("steer");
+    const [sendMode, setSendMode] = useState(restricted ? "followUp" : "steer");
     // The queued message tapped open, wrapped: one line each until then. The queue holds only a message's start.
     const [reading, setReading] = useState(null);
     // The queued message whose Interrupt was tapped once (`CONFIRM_INTERRUPT`).
@@ -547,7 +547,7 @@ export function Composer() {
             setHideCommands(false);
         }
 
-        if (value.startsWith("/")) {
+        if (!restricted && value.startsWith("/")) {
             loadTemplates();
         }
 
@@ -558,20 +558,24 @@ export function Composer() {
     // Ctrl+R: what was sent before that has the words in the box.
     const recalled = searching ? searchHistory(text, historyScope) : [];
     const chosenRecall = recalled[Math.min(pick, recalled.length - 1)];
-    const suggestions = hideCommands || searching ? [] : suggestCommands(text);
+    const suggestions = restricted || hideCommands || searching ? [] : suggestCommands(text);
     const chosen = suggestions[Math.min(pick, suggestions.length - 1)];
-    const parsed = parseCommand(text);
-    const template = parsed ? null : parseTemplate(text);
+    const parsed = restricted ? null : parseCommand(text);
+    const template = restricted || parsed ? null : parseTemplate(text);
     // `!command` runs in the session's folder and Pi sees it; `!!command`, only the people here.
-    const shell = text.startsWith("!")
-        ? { context: !text.startsWith("!!"), command: text.replace(/^!!?/, "").trim() }
-        : null;
+    const shell =
+        !restricted && text.startsWith("!")
+            ? { context: !text.startsWith("!!"), command: text.replace(/^!!?/, "").trim() }
+            : null;
     const mentionsFiles = !shell && !parsed && MENTIONS_FILE.test(text);
     const pasted = PASTED.test(text);
 
     PASTED.lastIndex = 0;
     // The @path being typed at the caret, and the files that match it. Slash command names come first.
-    const typed = suggestions.length === 0 && !searching && !shell ? mentionAt(text, caret) : null;
+    const typed =
+        !restricted && suggestions.length === 0 && !searching && !shell
+            ? mentionAt(text, caret)
+            : null;
     const mention = typed && typed.start !== hiddenMention ? typed : null;
     const found = mention ? suggestFiles(mention.query) : null;
     const matches = found?.items ?? [];
@@ -1002,6 +1006,12 @@ export function Composer() {
     };
 
     const addFiles = (list) => {
+        if (restricted) {
+            notify("info", "Attachments are not available in this studio prototype.");
+
+            return;
+        }
+
         for (const file of list) {
             const key = uid();
             const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
@@ -1072,7 +1082,9 @@ export function Composer() {
               : sendMode === "interrupt"
                 ? "Stop the run and send this now…"
                 : "Queue a message for after this run…"
-          : "Ask Pi anything…";
+          : restricted
+            ? "Ask Heidi to work on HumanSignal…"
+            : "Ask Pi anything…";
     const inbox = view.inbox ?? [];
     const { me, users } = store.state;
     const queuedBy = (item) =>
@@ -1107,7 +1119,7 @@ export function Composer() {
                     <${Icon} name="chat" size=${15} /> Chat
                 </button>
             </div>
-            <${StatusLine} />
+            ${!restricted && html`<${StatusLine} />`}
         </footer>`;
     }
 
@@ -1145,6 +1157,7 @@ export function Composer() {
                                 ${queuedText(item)}
                             </button>
                             ${
+                                !restricted &&
                                 canSteer() &&
                                 (!blocked || item.by === me?.id) &&
                                 html`<button
@@ -1205,12 +1218,12 @@ export function Composer() {
                     )}
                 </div>`
             }
-            ${collab() && html`<${DriverBar} />`}
+            ${!restricted && collab() && html`<${DriverBar} />`}
             <${PlanBar} blocked=${blocked} />
             <${GoalBar} />
             <${WatchBar} />
             <${SubagentsBar} />
-            <${TrustBar} />
+            ${!restricted && html`<${TrustBar} />`}
         </div>
         <${ParentSessionButton} />
         ${
@@ -1437,12 +1450,12 @@ export function Composer() {
                         onKeyDown=${onKey}
                         onKeyUp=${(event) => setCaret(event.currentTarget.selectionStart)}
                         onClick=${(event) => setCaret(event.currentTarget.selectionStart)}
-                        onFocus=${() => loadFiles({ ifMissing: true })}
+                        onFocus=${() => !restricted && loadFiles({ ifMissing: true })}
                         onPaste=${onPaste}
                         enterkeyhint=${coarse ? "enter" : "send"}
                     ></textarea>
                     <div class="composer-row" data-part="composer-tools">
-                        ${slotItems("composer", { picker, agent, level, view }).map(({ node }) => node)}
+                        ${!restricted && slotItems("composer", { picker, agent, level, view }).map(({ node }) => node)}
                         <input
                             ref=${picker}
                             type="file"
@@ -1456,6 +1469,7 @@ export function Composer() {
                         <span class="grow"></span>
                         ${
                             busy &&
+                            !restricted &&
                             html`<div
                                 class="mode-switch"
                                 data-part="composer-button mode-switch"
@@ -1496,11 +1510,14 @@ export function Composer() {
                                 )}
                             </div>`
                         }
-                        <${MicButton}
+                        ${
+                            !restricted &&
+                            html`<${MicButton}
                             dictation=${dictation}
                             class="composer-mic"
                             part="composer-button"
-                        />
+                        />`
+                        }
                         <button
                             class=${`send-button ${canSend ? "ready" : ""}`}
                             data-part="send-button"
@@ -1520,7 +1537,7 @@ export function Composer() {
                     </div>
                 </div>`
         }
-        <${StatusLine} />
+        ${!restricted && html`<${StatusLine} />`}
     </footer>`;
 }
 

@@ -51,7 +51,10 @@
         "lint": "eslint .",
         "prepack": "node -e \"require('node:fs').copyFileSync('package-lock.json', 'npm-shrinkwrap.json')\"",
         "postpack": "node -e \"require('node:fs').rmSync('npm-shrinkwrap.json', { force: true })\"",
-        "prepublishOnly": "npm run check && npm run lint && npm test"
+        "prepublishOnly": "npm run check && npm run lint && npm test",
+        "studio": "../durable-workflows/node_modules/.bin/tsx studio/server.mjs",
+        "test:studio": "../durable-workflows/node_modules/.bin/tsx --test studio/*.test.mjs",
+        "studio:smoke": "node studio/smoke.mjs"
     },
     "dependencies": {
         "@earendil-works/chord": "1.4.0",

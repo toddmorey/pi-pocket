@@ -1,0 +1,11 @@
+/* Preserve the existing editor and its workflow; remove only the duplicate outer project header in the embedded surface. */
+html[data-pocket-review="true"] .studio-header {
+    display: none;
+}
+html[data-pocket-review="true"] .project-shell {
+    height: 100dvh;
+}
+html[data-pocket-review="true"] #tab-chat,
+html[data-pocket-review="true"] #tab-heidi {
+    display: none;
+}

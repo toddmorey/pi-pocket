@@ -176,6 +176,10 @@ function authorName(entryId, view, users) {
 
 /** Tapping a message opens what can be done with it, unless the tap was on a link, an image, or a button in it, or ended a text selection. */
 function openMessage(event, entryId) {
+    if (store.state.server?.studio) {
+        return;
+    }
+
     if (event.target.closest("a, button") || getSelection()?.toString()) {
         return;
     }
@@ -3179,7 +3183,7 @@ export function Transcript() {
                 html`<div class="empty hint">
                     <div class="pi">π</div>
                     <p>
-                        ${conversation.kind === "subagent" ? "This subagent has no messages yet." : "Ask anything. Pi works in this session's folder, and keeps working if the server restarts."}
+                        ${store.state.server?.studio ? "Ask Heidi to work on the HumanSignal project. Saved versions are reviewed before approval." : conversation.kind === "subagent" ? "This subagent has no messages yet." : "Ask anything. Pi works in this session's folder, and keeps working if the server restarts."}
                     </p>
                 </div>`
             }

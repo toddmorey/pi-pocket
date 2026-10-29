@@ -15,3 +15,6 @@ result-*
 
 # What `npm pack` makes.
 /*.tgz
+
+# Isolated Studio prototype state
+.data/
