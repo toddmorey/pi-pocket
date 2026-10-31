@@ -1292,6 +1292,10 @@ export function navigate(conversationId, { replace = false, sheet = null } = {})
 
 // Back or forward to another route. Back that only closes a layer (a sheet, a panel) is back.js's.
 onRoute(() => {
+    if (store.state.server?.studio) {
+        return;
+    }
+
     const id = routeConversation();
 
     if (id !== store.state.conversationId) {
@@ -1694,6 +1698,10 @@ export function discuss(entryId, text) {
 let lastVisible = null;
 
 function reportVisibility() {
+    if (store.state.server?.studio) {
+        return;
+    }
+
     const visible = document.visibilityState === "visible";
 
     if (visible === lastVisible || !collab()) {

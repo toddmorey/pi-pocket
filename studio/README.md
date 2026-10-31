@@ -2,6 +2,14 @@
 
 This fork tests actual reuse of Pi Pocket's UI with the HumanSignal Durable Studio backend. The upstream Pocket application is still available through its normal launcher. `npm run studio` starts a separate application and never opens `~/.pi-pocket` or the existing Studio database.
 
+## Hosted backend and R2
+
+The hosted integration is available at https://durable-studio-mvp.toddmorey.workers.dev/pocket/ after deployment. It uses company Access identity and the **existing hosted HumanSignal project and R2 releases**. It does not use or upload this prototype's local `.data` folder. The original hosted editor remains at `/`.
+
+The backend integration and deployment/check commands are documented in `../durable-workflows/docs/hosted-pocket.md`. `studio/build-hosted.mjs` packages this fork's frontend into that Worker's assets and produces its read-only projection module. Building does not upload or mutate project data.
+
+The hosted client omits development identity switching. Browser back/visibility hooks from Pocket's original server transport are bypassed in Studio mode; the adapter owns its stream and navigation. Local mode below remains available for isolated experimentation.
+
 ## Run
 
 Keep the `pi-pocket-studio` and `durable-workflows` checkouts beside each other. Studio needs its existing dependencies, built project editor/bridge, prepared HumanSignal seed, Bubblewrap, and Playwright toolchain. See `../durable-workflows/docs/hosted-mvp.md` for these prerequisites.
@@ -79,6 +87,6 @@ The dedicated integration test uses real Pi SQLite, tasks, streaming watches, St
 
 The local live walkthrough and its results are recorded in `VALIDATION.md`.
 
-This is not yet a Cloudflare frontend deployment or backend transport adapter. Access identity integration, presence/side chat, complete queue controls, a shared library, design-system proposal management and external publication remain subsequent slices. The original server is not a compatibility layer for all Pocket endpoints. Embedded React assets still have their existing build step.
+The initial local validation is recorded separately from the hosted integration. Presence/side chat, complete queue controls, a shared library, design-system proposal management and external publication remain subsequent slices. The original server is not a compatibility layer for all Pocket endpoints. Embedded React assets still have their existing build step.
 
 The prototype tests the expensive assumptions without migrating any existing projects or data. Upstream changes are currently localized to optional composer restrictions and Studio-specific transcript interaction handling. A long-lived fork still needs upstream merge maintenance and coordinated Pi/Agents version upgrades.

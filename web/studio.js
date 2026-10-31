@@ -7,15 +7,30 @@ import { store, dismiss, actions } from "./store.js";
 import { html, Icon } from "./ui.js";
 import { startTheme, setPrefs, prefs, chooseTheme } from "./theme.js";
 
+const hostedPath = location.pathname.startsWith("/pocket/");
 const actorResponse = await fetch("/api/session");
 
-if (!actorResponse.ok) {
-    location.replace("/dev-login");
+if (
+    !actorResponse.ok ||
+    actorResponse.redirected ||
+    !actorResponse.headers.get("Content-Type")?.includes("application/json")
+) {
+    if (!hostedPath) {
+        location.replace("/dev-login");
+    }
+
+    document.getElementById("app").innerHTML =
+        '<main class="empty"><h1>Sign in to Pocket Studio</h1><p>Your session ended or access could not be verified.</p><a href="/pocket/">Continue to sign in</a></main>';
 
     throw new Error("Sign in to open the studio.");
 }
 
-const { actor } = await actorResponse.json();
+const { actor, environment } = await actorResponse.json();
+const hosted = environment === "cloudflare";
+const homeUrl = hosted ? "/pocket/" : "/";
+const reviewUrl = hosted
+    ? "/pocket/review#/projects/humansignal"
+    : "/studio-review#/projects/humansignal";
 
 store.set({
     conversationId: 1,
@@ -77,7 +92,29 @@ function connect() {
         });
     };
 
-    stream.onerror = () => store.set({ connection: "reconnecting" });
+    stream.onerror = async () => {
+        store.set({ connection: "reconnecting" });
+
+        if (!hosted) {
+            return;
+        }
+
+        try {
+            const session = await fetch("/api/session", { redirect: "manual" });
+
+            if (
+                session.type === "opaqueredirect" ||
+                session.status === 401 ||
+                session.status === 403
+            ) {
+                stream.close();
+                document.getElementById("app").innerHTML =
+                    '<main class="empty"><h1>Sign in again</h1><p>Your work is saved.</p><a href="/pocket/">Continue to sign in</a></main>';
+            }
+        } catch {
+            /* EventSource retries a network interruption. */
+        }
+    };
 }
 
 connect();
@@ -104,17 +141,17 @@ function Studio() {
 
     return html`<div class="studio-shell" data-panel=${panel}>
         <aside class="studio-nav window" aria-label="Project navigation">
-            <a class="studio-brand" href="/">π <span>Pocket Studio</span></a>
+            <a class="studio-brand" href=${homeUrl}>π <span>Pocket Studio</span></a>
             <span class="studio-label">PROJECT</span>
             <button class="studio-project" onClick=${() => setPanel("conversation")}>
                 <${Icon} name="folder" size=${18} /> HumanSignal website
             </button>
-            <p class="muted small">Shared project · isolated prototype</p>
+            <p class="muted small">${hosted ? "Shared project · Cloudflare" : "Shared project · isolated prototype"}</p>
             <button class="button" onClick=${openReview}>Review & element edits</button>
             <div class="grow"></div>
             <button class="button" onClick=${() => setAppearance(!appearance)}>Appearance</button>
             <span class="small">${actor.name} · ${actor.owner ? "owner" : "member"}</span>
-            <a class="muted small" href="/dev-login">Change development identity</a>
+            ${!hosted && html`<a class="muted small" href="/dev-login">Change development identity</a>`}
         </aside>
         <section class="studio-conversation pane window" aria-label="Conversation with Heidi">
             <header class="studio-topbar">
@@ -144,9 +181,9 @@ function Studio() {
         <section class="studio-review window" aria-label="Project review" hidden=${!reviewOpened}>
             <header class="studio-topbar"><strong>Saved output & feedback</strong><span class="grow"></span>
                 <button class="button" onClick=${() => setPanel("conversation")}>Conversation</button>
-                <a class="link" href="/studio-review#/projects/humansignal" target="_blank" rel="noopener">Open separately</a>
+                <a class="link" href=${reviewUrl} target="_blank" rel="noopener">Open separately</a>
             </header>
-            ${reviewOpened && html`<iframe title="HumanSignal review and approvals" src="/studio-review#/projects/humansignal"></iframe>`}
+            ${reviewOpened && html`<iframe title="HumanSignal review and approvals" src=${reviewUrl}></iframe>`}
         </section>
         <nav class="studio-mobile-tabs" aria-label="Workspace panels">
             <button aria-pressed=${panel === "conversation"} onClick=${() => setPanel("conversation")}>Conversation</button>
